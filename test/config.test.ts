@@ -20,7 +20,9 @@ describe("parseCommand", () => {
         model: DEFAULT_MODEL,
         host: DEFAULT_HOST,
         apiKey: "",
-        timeoutMs: DEFAULT_TIMEOUT_MS
+        timeoutMs: DEFAULT_TIMEOUT_MS,
+        datasetEnabled: true,
+        datasetPath: undefined
       }
     });
   });
@@ -48,7 +50,43 @@ describe("parseCommand", () => {
         model: "mini",
         host: "http://example.test",
         apiKey: "secret",
-        timeoutMs: 10
+        timeoutMs: 10,
+        datasetEnabled: true,
+        datasetPath: undefined
+      }
+    });
+  });
+
+  it("parses translate command with the default human language", () => {
+    expect(parseCommand(["translate", "X r=done tests"], {}, {})).toEqual({
+      kind: "translate",
+      text: "X r=done tests",
+      language: "en-US",
+      config: {
+        question: "Translate distill-talk into human language.",
+        model: DEFAULT_MODEL,
+        host: DEFAULT_HOST,
+        apiKey: "",
+        timeoutMs: DEFAULT_TIMEOUT_MS,
+        datasetEnabled: true,
+        datasetPath: undefined
+      }
+    });
+  });
+
+  it("parses translate command with an explicit human language", () => {
+    expect(parseCommand(["translate", "N r=missing ctx", "pt-BR"], {}, {})).toEqual({
+      kind: "translate",
+      text: "N r=missing ctx",
+      language: "pt-BR",
+      config: {
+        question: "Translate distill-talk into human language.",
+        model: DEFAULT_MODEL,
+        host: DEFAULT_HOST,
+        apiKey: "",
+        timeoutMs: DEFAULT_TIMEOUT_MS,
+        datasetEnabled: true,
+        datasetPath: undefined
       }
     });
   });
@@ -61,7 +99,9 @@ describe("parseCommand", () => {
         model: "saved-model",
         host: "http://saved.test",
         apiKey: "saved-key",
-        timeoutMs: 50
+        timeoutMs: 50,
+        datasetEnabled: false,
+        datasetPath: "/tmp/distill.jsonl"
       }
     );
 
@@ -72,7 +112,9 @@ describe("parseCommand", () => {
         model: "saved-model",
         host: "http://saved.test",
         apiKey: "saved-key",
-        timeoutMs: 50
+        timeoutMs: 50,
+        datasetEnabled: false,
+        datasetPath: "/tmp/distill.jsonl"
       }
     });
   });
@@ -84,20 +126,26 @@ describe("parseCommand", () => {
           DISTILL_MODEL: "env-model",
           DISTILL_HOST: "http://env.test",
           DISTILL_API_KEY: "env-key",
-          DISTILL_TIMEOUT_MS: "999"
+          DISTILL_TIMEOUT_MS: "999",
+          DISTILL_DATASET_ENABLED: "false",
+          DISTILL_DATASET_PATH: "/tmp/env-distill.jsonl"
         },
         {
           model: "saved-model",
           host: "http://saved.test",
           apiKey: "saved-key",
-          timeoutMs: 5
+          timeoutMs: 5,
+          datasetEnabled: true,
+          datasetPath: "/tmp/saved-distill.jsonl"
         }
       )
     ).toEqual({
       model: "env-model",
       host: "http://env.test",
       apiKey: "env-key",
-      timeoutMs: 999
+      timeoutMs: 999,
+      datasetEnabled: false,
+      datasetPath: "/tmp/env-distill.jsonl"
     });
   });
 
@@ -121,6 +169,20 @@ describe("parseCommand", () => {
       key: "timeout-ms",
       value: 30000
     });
+
+    expect(parseCommand(["config", "dataset-enabled", "false"], {}, {})).toEqual({
+      kind: "configSet",
+      key: "dataset-enabled",
+      value: false
+    });
+
+    expect(
+      parseCommand(["config", "dataset-path", "/tmp/distill.jsonl"], {}, {})
+    ).toEqual({
+      kind: "configSet",
+      key: "dataset-path",
+      value: "/tmp/distill.jsonl"
+    });
   });
 
   it("rejects unknown config keys", () => {
@@ -140,6 +202,16 @@ describe("parseCommand", () => {
 
   it("throws on missing question", () => {
     expect(() => parseCommand([], {}, {})).toThrow(UsageError);
+  });
+
+  it("throws on missing translate text", () => {
+    expect(() => parseCommand(["translate"], {}, {})).toThrow(UsageError);
+  });
+
+  it("throws on extra translate arguments", () => {
+    expect(() =>
+      parseCommand(["translate", "X r=done", "pt-BR", "extra"], {}, {})
+    ).toThrow(UsageError);
   });
 
   it("throws on unknown flag", () => {

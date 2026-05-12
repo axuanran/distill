@@ -3,7 +3,12 @@ import {
   DEFAULT_INTERACTIVE_GAP_MS,
   DEFAULT_PROGRESS_FRAME_MS
 } from "./config";
-import type { Summarizer } from "./summarizer";
+import type { RuntimeConfig } from "./config";
+import {
+  appendDatasetRecord,
+  buildDatasetRecord,
+  type DatasetAppendConfig
+} from "./dataset";
 import {
   ensureTrailingNewline,
   hasPromptLikeTail,
@@ -29,9 +34,17 @@ const PROGRESS_LABELS: Record<ProgressPhase, string> = {
   summarizing: "distill: summarizing"
 };
 
+export interface Summarizer {
+  summarizeBatch(input: string): Promise<string>;
+  summarizeWatch(previousCycle: string, currentCycle: string): Promise<string>;
+}
+
 export interface DistillSessionOptions {
   summarizer: Summarizer;
+  runtimeConfig?: RuntimeConfig;
+  dataset?: DatasetAppendConfig;
   stdout: Pick<NodeJS.WriteStream, "write">;
+  stderr?: Pick<NodeJS.WriteStream, "write">;
   isTTY: boolean;
   progress?: Pick<NodeJS.WriteStream, "write">;
   onProgressPhase?: (phase: ProgressPhase) => void;
@@ -43,7 +56,10 @@ export interface DistillSessionOptions {
 
 export class DistillSession {
   private readonly summarizer: Summarizer;
+  private readonly runtimeConfig: RuntimeConfig | null;
+  private readonly dataset: DatasetAppendConfig | null;
   private readonly stdout: Pick<NodeJS.WriteStream, "write">;
+  private readonly stderr: Pick<NodeJS.WriteStream, "write"> | null;
   private readonly isTTY: boolean;
   private readonly progress: Pick<NodeJS.WriteStream, "write"> | null;
   private readonly onProgressPhase: ((phase: ProgressPhase) => void) | null;
@@ -71,7 +87,10 @@ export class DistillSession {
 
   constructor(options: DistillSessionOptions) {
     this.summarizer = options.summarizer;
+    this.runtimeConfig = options.runtimeConfig ?? null;
+    this.dataset = options.dataset ?? null;
     this.stdout = options.stdout;
+    this.stderr = options.stderr ?? null;
     this.isTTY = options.isTTY;
     this.progress = options.progress ?? null;
     this.onProgressPhase = options.onProgressPhase ?? null;
@@ -128,11 +147,11 @@ export class DistillSession {
       return;
     }
 
+    const normalizedInput = normalizeForModel(rawInput);
+
     try {
       this.setProgressPhase("summarizing");
-      const summary = await this.summarizer.summarizeBatch(
-        normalizeForModel(rawInput)
-      );
+      const summary = await this.summarizer.summarizeBatch(normalizedInput);
 
       if (looksLikeBadDistillation(rawInput, summary)) {
         this.stopProgress(true);
@@ -140,11 +159,34 @@ export class DistillSession {
         return;
       }
 
+      const output = summary.trim();
       this.stopProgress(true);
-      this.stdout.write(ensureTrailingNewline(summary.trim()));
+      this.stdout.write(ensureTrailingNewline(output));
+      await this.captureDatasetRecord(normalizedInput, output);
     } catch {
       this.stopProgress(true);
       this.stdout.write(Buffer.concat(this.rawBuffers));
+    }
+  }
+
+  private async captureDatasetRecord(input: string, output: string): Promise<void> {
+    if (!this.dataset || !this.runtimeConfig || !output) {
+      return;
+    }
+
+    try {
+      const result = await appendDatasetRecord(
+        this.dataset,
+        buildDatasetRecord(this.runtimeConfig, input, output)
+      );
+
+      if (result.firstWrite && this.dataset.enabled) {
+        this.stderr?.write(
+          `distill: capturing fine-tuning data at ${this.dataset.path}; disable with DISTILL_DATASET_ENABLED=false\n`
+        );
+      }
+    } catch {
+      this.stderr?.write("distill: failed to write dataset record.\n");
     }
   }
 

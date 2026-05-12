@@ -8,30 +8,43 @@ export const DEFAULT_TIMEOUT_MS = 90_000;
 export const DEFAULT_IDLE_MS = 1_200;
 export const DEFAULT_INTERACTIVE_GAP_MS = 180;
 export const DEFAULT_PROGRESS_FRAME_MS = 120;
+export const DEFAULT_DATASET_ENABLED = true;
 
-export interface RuntimeConfig {
-  question: string;
+export interface DistillSettings {
   model: string;
   host: string;
   apiKey: string;
   timeoutMs: number;
+  datasetEnabled: boolean;
+  datasetPath?: string;
 }
 
-export interface PersistedConfig {
-  model?: string;
-  host?: string;
-  apiKey?: string;
-  timeoutMs?: number;
+export interface RuntimeConfig extends DistillSettings {
+  question: string;
 }
 
-export type ConfigKey = "model" | "host" | "api-key" | "timeout-ms";
+export type PersistedConfig = Partial<DistillSettings>;
+
+export type ConfigKey =
+  | "model"
+  | "host"
+  | "api-key"
+  | "timeout-ms"
+  | "dataset-enabled"
+  | "dataset-path";
 
 export type Command =
   | { kind: "help" }
   | { kind: "version" }
   | { kind: "configShow" }
   | { kind: "configGet"; key: ConfigKey }
-  | { kind: "configSet"; key: ConfigKey; value: string | number }
+  | { kind: "configSet"; key: ConfigKey; value: string | number | boolean }
+  | {
+      kind: "translate";
+      text: string;
+      language: string;
+      config: RuntimeConfig;
+    }
   | { kind: "run"; config: RuntimeConfig };
 
 export class UsageError extends Error {
@@ -84,10 +97,28 @@ function normalizeHost(input: string | undefined): string {
   return value.endsWith("/") ? value.slice(0, -1) : value;
 }
 
+function coerceBoolean(input: string | boolean | undefined): boolean {
+  if (typeof input === "boolean") {
+    return input;
+  }
+
+  const value = String(input ?? DEFAULT_DATASET_ENABLED).trim().toLowerCase();
+
+  if (["1", "true", "yes", "on"].includes(value)) {
+    return true;
+  }
+
+  if (["0", "false", "no", "off"].includes(value)) {
+    return false;
+  }
+
+  throw new UsageError("Boolean values must be true or false.");
+}
+
 export function resolveRuntimeDefaults(
   env: NodeJS.ProcessEnv,
   persisted: PersistedConfig
-): Omit<RuntimeConfig, "question"> {
+): DistillSettings {
   const model = env.DISTILL_MODEL ?? persisted.model ?? DEFAULT_MODEL;
   const host = normalizeHost(
     env.DISTILL_HOST ?? persisted.host ?? DEFAULT_HOST
@@ -96,12 +127,18 @@ export function resolveRuntimeDefaults(
   const timeoutMs = coerceTimeout(
     env.DISTILL_TIMEOUT_MS ?? String(persisted.timeoutMs ?? DEFAULT_TIMEOUT_MS)
   );
+  const datasetEnabled = coerceBoolean(
+    env.DISTILL_DATASET_ENABLED ?? persisted.datasetEnabled
+  );
+  const datasetPath = env.DISTILL_DATASET_PATH ?? persisted.datasetPath;
 
   return {
     model,
     host,
     apiKey,
-    timeoutMs
+    timeoutMs,
+    datasetEnabled,
+    datasetPath
   };
 }
 
@@ -112,7 +149,16 @@ function parseConfigCommand(argv: string[]): Command {
 
   const key = argv[1] as ConfigKey;
 
-  if (!["model", "host", "api-key", "timeout-ms"].includes(key)) {
+  if (
+    ![
+      "model",
+      "host",
+      "api-key",
+      "timeout-ms",
+      "dataset-enabled",
+      "dataset-path"
+    ].includes(key)
+  ) {
     throw new UsageError(`Unknown config key: ${argv[1]}`);
   }
 
@@ -142,6 +188,14 @@ function parseConfigCommand(argv: string[]): Command {
     };
   }
 
+  if (key === "dataset-enabled") {
+    return {
+      kind: "configSet",
+      key,
+      value: coerceBoolean(rawValue)
+    };
+  }
+
   return {
     kind: "configSet",
     key,
@@ -167,6 +221,32 @@ export function parseCommand(
   }
 
   const defaults = resolveRuntimeDefaults(env, persisted);
+
+  if (argv[0] === "translate") {
+    if (!argv[1]?.trim()) {
+      throw new UsageError("distill-talk text is required.");
+    }
+
+    if (argv.length > 3) {
+      throw new UsageError("Usage: distill translate <text> [language]");
+    }
+
+    return {
+      kind: "translate",
+      text: argv[1],
+      language: argv[2] ?? "en-US",
+      config: {
+        question: "Translate distill-talk into human language.",
+        model: defaults.model,
+        host: defaults.host,
+        apiKey: defaults.apiKey,
+        timeoutMs: defaults.timeoutMs,
+        datasetEnabled: defaults.datasetEnabled,
+        datasetPath: defaults.datasetPath
+      }
+    };
+  }
+
   let timeoutMs = defaults.timeoutMs;
   let modelOverride: string | undefined;
   let hostOverride: string | undefined;
@@ -233,7 +313,9 @@ export function parseCommand(
       model,
       host,
       apiKey,
-      timeoutMs
+      timeoutMs,
+      datasetEnabled: defaults.datasetEnabled,
+      datasetPath: defaults.datasetPath
     }
   };
 }
@@ -242,6 +324,7 @@ export function formatUsage(): string {
   return [
     "Usage:",
     '  cmd 2>&1 | distill "question"',
+    '  distill translate "X r=tests_passed ship" [language]',
     '  distill config host http://127.0.0.1:11434/v1',
     '  distill config model "qwen3.5:2b"',
     '  distill --host http://127.0.0.1:1234/v1 --model my-model "summarize"',
@@ -251,6 +334,12 @@ export function formatUsage(): string {
     `  --host <url>          OpenAI-compatible base URL (default: ${DEFAULT_HOST})`,
     "  --api-key <key>       API key (env: DISTILL_API_KEY)",
     `  --timeout-ms <ms>     Request timeout in milliseconds (default: ${DEFAULT_TIMEOUT_MS})`,
+    "",
+    "Local fine-tuning capture (enabled by default):",
+    "  Successful batch summaries are appended as JSONL under the config dir",
+    "  (input + completion). The file is created with mode 0600.",
+    "  DISTILL_DATASET_ENABLED=false  Disable local JSONL dataset capture",
+    "  DISTILL_DATASET_PATH=<path>    Override dataset JSONL path",
     "  --help                Show usage",
     "  --version             Show version"
   ].join("\n");

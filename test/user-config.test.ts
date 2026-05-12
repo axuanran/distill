@@ -22,19 +22,26 @@ describe("user config", () => {
       );
       await setPersistedConfigValue(
         { DISTILL_CONFIG_PATH: configPath },
-        "thinking",
+        "dataset-enabled",
         false
+      );
+      await setPersistedConfigValue(
+        { DISTILL_CONFIG_PATH: configPath },
+        "dataset-path",
+        "/tmp/distill.jsonl"
       );
 
       expect(await readPersistedConfig({ DISTILL_CONFIG_PATH: configPath })).toEqual({
         model: "qwen3.5:2b",
-        thinking: false
+        datasetEnabled: false,
+        datasetPath: "/tmp/distill.jsonl"
       });
 
       const raw = JSON.parse(await readFile(configPath, "utf8"));
       expect(raw).toEqual({
         model: "qwen3.5:2b",
-        thinking: false
+        datasetEnabled: false,
+        datasetPath: "/tmp/distill.jsonl"
       });
     } finally {
       await rm(dir, { recursive: true, force: true });

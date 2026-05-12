@@ -7,8 +7,10 @@
     "distill": "bin/distill.js"
   },
   "files": [
+    ".claude",
     "bin",
-    "README.md"
+    "README.md",
+    "skills"
   ],
   "engines": {
     "node": ">=18"

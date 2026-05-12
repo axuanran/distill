@@ -90,9 +90,9 @@ describe("cli entrypoint", () => {
         }
       );
 
-      const setThinking = spawnSync(
+      const setDatasetEnabled = spawnSync(
         "bun",
-        ["run", cli, "config", "thinking", "false"],
+        ["run", cli, "config", "dataset-enabled", "false"],
         {
           cwd: root,
           encoding: "utf8",
@@ -104,10 +104,10 @@ describe("cli entrypoint", () => {
       );
 
       expect(setModel.status).toBe(0);
-      expect(setThinking.status).toBe(0);
+      expect(setDatasetEnabled.status).toBe(0);
       expect(JSON.parse(await readFile(configPath, "utf8"))).toEqual({
         model: "qwen3.5:2b",
-        thinking: false
+        datasetEnabled: false
       });
     } finally {
       await rm(dir, { recursive: true, force: true });

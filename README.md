@@ -52,6 +52,15 @@ git diff | distill "what changed?"
 terraform plan 2>&1 | distill "is this safe?"
 ```
 
+Translate compressed `distill-talk` back to human language:
+
+```bash
+distill translate "X r=tests_passed ship"
+distill translate "N r=missing_context ctx repo_state" pt-BR
+```
+
+The language argument is optional and defaults to `en-US`.
+
 Point at any OpenAI-compatible endpoint:
 
 ```bash
@@ -103,6 +112,47 @@ If you want Codex, Claude Code, or OpenCode to prefer `distill` whenever they ru
 - OpenCode supports global instruction files through `~/.config/opencode/opencode.json`. Point its `instructions` field at a markdown file with the same rule.
 - GitHub Copilot CLI supports local global instructions from `~/.copilot/copilot-instructions.md`.
 - GitHub Copilot CLI also reads repository instructions from .github/copilot-instructions.md, and it can read AGENTS.md files from directories listed in COPILOT_CUSTOM_INSTRUCTIONS_DIRS.
+
+## distill-talk skill
+
+`distill` ships `distill-talk` for both Codex and Claude:
+
+- Codex skill: `skills/distill-talk/SKILL.md`
+- Claude Code project skill: `.claude/skills/distill-talk/SKILL.md`
+
+Both files use the `SKILL.md` frontmatter format with `name` and `description`, and both contain the same compact task DSL as `sam-compress-talk`, renamed for this package.
+
+Install from this repository:
+
+```bash
+mkdir -p ~/.codex/skills ~/.claude/skills
+cp -R skills/distill-talk ~/.codex/skills/distill-talk
+cp -R .claude/skills/distill-talk ~/.claude/skills/distill-talk
+```
+
+Install from the npm package:
+
+```bash
+npm i -g @samuelfaj/distill
+DISTILL_PACKAGE="$(npm root -g)/@samuelfaj/distill"
+mkdir -p ~/.codex/skills ~/.claude/skills
+cp -R "$DISTILL_PACKAGE/skills/distill-talk" ~/.codex/skills/distill-talk
+cp -R "$DISTILL_PACKAGE/.claude/skills/distill-talk" ~/.claude/skills/distill-talk
+```
+
+Use it when you want one-line compressed task state:
+
+```text
+X r=tests_passed parser e2e docs
+N r=missing_context repro files
+```
+
+Use `distill translate` to expand that DSL for a human reviewer:
+
+```bash
+distill translate "X r=tests_passed parser e2e docs"
+distill translate "N r=missing_context repro files" pt-BR
+```
 
 ## Example:
 

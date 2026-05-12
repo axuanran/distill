@@ -289,6 +289,69 @@ describe("distill end-to-end", () => {
     }
   });
 
+  it("translates distill-talk without requiring stdin", async () => {
+    const fake = await createFakeChatProvider((_body, _index) =>
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: "Done because tests passed. Next step: ship it."
+              }
+            }
+          ]
+        }),
+        { status: 200 }
+      )
+    );
+
+    try {
+      const result = await runLauncher(["translate", "X r=tests_passed ship"], {
+        env: createProviderEnv(fake.host)
+      });
+
+      expect(result.code).toBe(0);
+      expect(result.stderr).toBe("");
+      expect(result.stdout).toBe("Done because tests passed. Next step: ship it.\n");
+      expect(fake.requests).toHaveLength(1);
+      expect(fake.requests[0]).toMatchObject({
+        model: DEFAULT_MODEL
+      });
+      expect(JSON.stringify(fake.requests[0])).toContain("distill-talk");
+      expect(JSON.stringify(fake.requests[0])).toContain("en-US");
+      expect(JSON.stringify(fake.requests[0])).toContain("X r=tests_passed ship");
+    } finally {
+      fake.stop();
+    }
+  });
+
+  it("translates distill-talk into an explicit language", async () => {
+    const fake = await createFakeChatProvider((_body, _index) =>
+      new Response(
+        JSON.stringify({
+          choices: [{ message: { content: "Preciso do contexto que falta." } }]
+        }),
+        { status: 200 }
+      )
+    );
+
+    try {
+      const result = await runLauncher(
+        ["translate", "N r=missing_context ctx", "pt-BR"],
+        {
+          env: createProviderEnv(fake.host)
+        }
+      );
+
+      expect(result.code).toBe(0);
+      expect(result.stdout).toBe("Preciso do contexto que falta.\n");
+      expect(JSON.stringify(fake.requests[0])).toContain("pt-BR");
+      expect(JSON.stringify(fake.requests[0])).toContain("N r=missing_context ctx");
+    } finally {
+      fake.stop();
+    }
+  });
+
   itPty("keeps the spinner moving in a pty while collecting streamed input and summarizing", async () => {
     const fake = await createFakeChatProvider(async (_body, _index) => {
       await delay(700);

@@ -1,6 +1,12 @@
-import type { PromptMessages } from "./prompt";
+import type { RuntimeConfig } from "./config";
+import {
+  buildBatchPrompt,
+  buildTranslatePrompt,
+  buildWatchPrompt,
+  type PromptMessages
+} from "./prompt";
 
-export interface OpenAIRequest {
+export interface ChatCompletionRequest {
   baseUrl: string;
   apiKey: string;
   model: string;
@@ -25,7 +31,7 @@ function buildChatCompletionsUrl(baseUrl: string): URL {
   return normalized;
 }
 
-export async function requestOpenAI({
+export async function chatCompletion({
   baseUrl,
   apiKey,
   model,
@@ -34,7 +40,7 @@ export async function requestOpenAI({
   maxTokens,
   temperature,
   fetchImpl = fetch
-}: OpenAIRequest): Promise<string> {
+}: ChatCompletionRequest): Promise<string> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -97,4 +103,51 @@ export async function requestOpenAI({
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function summarize(
+  config: RuntimeConfig,
+  prompt: PromptMessages,
+  fetchImpl?: typeof fetch
+): Promise<string> {
+  return chatCompletion({
+    baseUrl: config.host,
+    apiKey: config.apiKey,
+    model: config.model,
+    prompt,
+    timeoutMs: config.timeoutMs,
+    temperature: 0,
+    maxTokens: 512,
+    fetchImpl
+  });
+}
+
+export function summarizeBatch(
+  config: RuntimeConfig,
+  input: string,
+  fetchImpl?: typeof fetch
+): Promise<string> {
+  return summarize(config, buildBatchPrompt(config.question, input), fetchImpl);
+}
+
+export function summarizeTranslate(
+  config: RuntimeConfig,
+  text: string,
+  language: string,
+  fetchImpl?: typeof fetch
+): Promise<string> {
+  return summarize(config, buildTranslatePrompt(text, language), fetchImpl);
+}
+
+export function summarizeWatch(
+  config: RuntimeConfig,
+  previousCycle: string,
+  currentCycle: string,
+  fetchImpl?: typeof fetch
+): Promise<string> {
+  return summarize(
+    config,
+    buildWatchPrompt(config.question, previousCycle, currentCycle),
+    fetchImpl
+  );
 }

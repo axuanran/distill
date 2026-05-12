@@ -4,8 +4,9 @@ import {
   formatUsage,
   parseCommand
 } from "./config";
-import { createSummarizer } from "./summarizer";
+import { summarizeBatch, summarizeTranslate, summarizeWatch } from "./llm";
 import { DistillSession, type ProgressPhase } from "./stream-distiller";
+import { resolveDatasetPath } from "./dataset";
 import {
   getPersistedConfigValue,
   readPersistedConfig,
@@ -34,7 +35,9 @@ async function run(): Promise<number> {
         `model=${persisted.model ?? ""}`,
         `host=${persisted.host ?? ""}`,
         `api-key=${persisted.apiKey ? "***" : ""}`,
-        `timeout-ms=${persisted.timeoutMs ?? ""}`
+        `timeout-ms=${persisted.timeoutMs ?? ""}`,
+        `dataset-enabled=${persisted.datasetEnabled ?? ""}`,
+        `dataset-path=${persisted.datasetPath ?? ""}`
       ].join("\n") + "\n"
     );
     return 0;
@@ -49,6 +52,16 @@ async function run(): Promise<number> {
   if (command.kind === "configSet") {
     await setPersistedConfigValue(process.env, command.key, command.value);
     process.stdout.write(`${command.key}=${String(command.value)}\n`);
+    return 0;
+  }
+
+  if (command.kind === "translate") {
+    const output = await summarizeTranslate(
+      command.config,
+      command.text,
+      command.language
+    );
+    process.stdout.write(`${output}\n`);
     return 0;
   }
 
@@ -75,8 +88,18 @@ async function run(): Promise<number> {
       }
     : undefined;
   const session = new DistillSession({
-    summarizer: createSummarizer(command.config),
+    summarizer: {
+      summarizeBatch: (input) => summarizeBatch(command.config, input),
+      summarizeWatch: (previous, current) =>
+        summarizeWatch(command.config, previous, current)
+    },
+    runtimeConfig: command.config,
+    dataset: {
+      enabled: command.config.datasetEnabled,
+      path: resolveDatasetPath(process.env, command.config.datasetPath)
+    },
     stdout: process.stdout,
+    stderr: process.stderr,
     isTTY: Boolean(process.stdout.isTTY),
     progress,
     onProgressPhase: emitProgressPhase,

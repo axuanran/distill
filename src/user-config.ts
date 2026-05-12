@@ -82,12 +82,16 @@ export async function writePersistedConfig(
 export async function setPersistedConfigValue(
   env: NodeJS.ProcessEnv,
   key: ConfigKey,
-  value: string | number
+  value: string | number | boolean
 ): Promise<PersistedConfig> {
   const current = await readPersistedConfig(env);
 
   if (key === "timeout-ms") {
     current.timeoutMs = Number(value);
+  } else if (key === "dataset-enabled") {
+    current.datasetEnabled = Boolean(value);
+  } else if (key === "dataset-path") {
+    current.datasetPath = String(value);
   } else if (key === "host") {
     current.host = String(value);
   } else if (key === "api-key") {
@@ -106,6 +110,16 @@ export function getPersistedConfigValue(
 ): string | number | undefined {
   if (key === "timeout-ms") {
     return config.timeoutMs;
+  }
+
+  if (key === "dataset-enabled") {
+    return config.datasetEnabled === undefined
+      ? undefined
+      : String(config.datasetEnabled);
+  }
+
+  if (key === "dataset-path") {
+    return config.datasetPath;
   }
 
   if (key === "host") {

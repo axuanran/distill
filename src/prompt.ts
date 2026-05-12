@@ -151,6 +151,31 @@ export function buildBatchPrompt(question: string, input: string): PromptMessage
   };
 }
 
+export function buildTranslatePrompt(text: string, language: string): PromptMessages {
+  const system = [
+    "You translate distill-talk into human language for a software engineer.",
+    "distill-talk is a compact task DSL.",
+    "Operators: P means plan, D means do or next action, N means need missing",
+    "context, X means done, E means error or blocked.",
+    "Keep all facts, blockers, uncertainty, flags, IDs, file names, commands,",
+    "and technical terms from the input.",
+    "Do not invent missing facts. Do not claim execution happened unless the",
+    "input says it happened.",
+    "Write concise natural language in the requested language or locale.",
+    "Return only the translation. No preamble. No markdown."
+  ].join(" ");
+
+  return {
+    system,
+    user: [
+      `Target language: ${language}`,
+      "",
+      "distill-talk input:",
+      fitInput(text, 4000)
+    ].join("\n")
+  };
+}
+
 export function buildWatchPrompt(
   question: string,
   previousCycle: string,
