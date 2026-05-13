@@ -176,17 +176,30 @@ describe("summarizeBatch", () => {
 });
 
 describe("summarizeTranslate", () => {
-  it("asks the provider to translate distill-talk into human language", async () => {
+  it("asks the provider to expand /distill Military English into human language", async () => {
+    let systemContent = "";
     let userContent = "";
 
     const output = await summarizeTranslate(
       baseConfig,
-      "X r=tests_passed ship",
+      [
+        "Dict: be=backend fe=frontend",
+        "Best:",
+        "Fix auth bug.",
+        "Add failing test first.",
+        "No fe change.",
+        "Pass: valid user allowed, tests pass.",
+        "More aggressive:",
+        "Fix be auth only.",
+        "Tradeoff:",
+        "Less context for reviewer."
+      ].join("\n"),
       "en-US",
       async (_, init) => {
         const body = JSON.parse(String(init?.body ?? "{}")) as {
           messages: Array<{ role: string; content: string }>;
         };
+        systemContent = body.messages[0].content;
         userContent = body.messages[1].content;
 
         return new Response(
@@ -205,7 +218,12 @@ describe("summarizeTranslate", () => {
     );
 
     expect(output).toBe("Done because tests passed. Next step: ship it.");
-    expect(userContent).toContain("X r=tests_passed ship");
+    expect(systemContent).toContain("Military English");
+    expect(systemContent).toContain("Best");
+    expect(systemContent).toContain("Dict");
+    expect(systemContent).toContain("Pass");
+    expect(userContent).toContain("Dict: be=backend fe=frontend");
+    expect(userContent).toContain("No fe change.");
     expect(userContent).toContain("en-US");
   });
 });

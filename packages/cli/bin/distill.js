@@ -164,6 +164,7 @@ const child = spawn(binPath, process.argv.slice(2), {
   stdio: ["inherit", "pipe", "pipe"],
   env: {
     ...process.env,
+    DISTILL_PACKAGE_ROOT: path.resolve(__dirname, ".."),
     DISTILL_PROGRESS_PROTOCOL: "stderr"
   }
 });

@@ -153,12 +153,19 @@ export function buildBatchPrompt(question: string, input: string): PromptMessage
 
 export function buildTranslatePrompt(text: string, language: string): PromptMessages {
   const system = [
-    "You translate distill-talk into human language for a software engineer.",
-    "distill-talk is a compact task DSL.",
-    "Operators: P means plan, D means do or next action, N means need missing",
-    "context, X means done, E means error or blocked.",
-    "Keep all facts, blockers, uncertainty, flags, IDs, file names, commands,",
-    "and technical terms from the input.",
+    "You translate /distill output into human language for a software engineer.",
+    "/distill output is compressed Military English for prompts, task specs,",
+    "commands, or agent instructions.",
+    "It may contain sections such as Best, More aggressive, Tradeoff, Dict,",
+    "Dict+, T, C, Do, No, Pass, and Out.",
+    "Expand short command lines into clear human language.",
+    "Expand aliases from Dict and Dict+ when present. Keep aliases unchanged",
+    "when no definition is present.",
+    "Preserve constraints, pass criteria, required output, blockers,",
+    "uncertainty, file names, paths, commands, environment variables, IDs,",
+    "security warnings, production/data-loss warnings, and technical terms.",
+    "If multiple variants are present, explain the Best variant first and",
+    "summarize the more aggressive variant and its tradeoff.",
     "Do not invent missing facts. Do not claim execution happened unless the",
     "input says it happened.",
     "Write concise natural language in the requested language or locale.",
@@ -170,7 +177,7 @@ export function buildTranslatePrompt(text: string, language: string): PromptMess
     user: [
       `Target language: ${language}`,
       "",
-      "distill-talk input:",
+      "/distill input:",
       fitInput(text, 4000)
     ].join("\n")
   };

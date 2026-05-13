@@ -1,166 +1,68 @@
 # distill
 
-Agent command outputs are one of the biggest sources of token waste.
+`distill` compresses command output into the exact answer an LLM needs.
 
-Logs, test results, stack traces… thousands of tokens sent to an LLM just to answer a simple question.
-
-**🔥 `distill` compresses command outputs into only what the LLM actually needs.**
-
-Save **up to 99% of tokens** without losing the signal.
+Use it for logs, test results, diffs, plans, audits, and other noisy terminal output.
 
 ## How to use
 
-```bash
-npm i -g @samuelfaj/distill
-```
-
-`distill` speaks any OpenAI-compatible API. Point it at whatever endpoint you run locally (LM Studio, Jan, LocalAI, vLLM, SGLang, llama.cpp, MLX, Docker Model Runner, Ollama's `/v1`, DFlash, etc.) or a hosted provider (OpenAI, etc.) by setting `--host` to its base URL.
-
-Add in your global agent instructions file:
-
-```md
-CRITICAL: Pipe every non-interactive shell command through `distill` unless raw output is explicitly required.
-
-CRITICAL: Your prompt to `distill` must be fully explicit. State exactly what you want to know and exactly what the output must contain. If you want only filenames, say `Return only the filenames.` If you want JSON, say `Return valid JSON only.` Do not ask vague questions.
-
-Bad:
-- `distill "Which files are shown?"`
-
-Good:
-- `distill "Which files are shown? Return only the filenames."`
-
-Examples:
-- `bun test 2>&1 | distill "Did the tests pass? Return only: PASS or FAIL, followed by failing test names if any."`
-- `git diff 2>&1 | distill "What changed? Return only the files changed and a one-line summary for each file."`
-- `terraform plan 2>&1 | distill "Is this safe? Return only: SAFE, REVIEW, or UNSAFE, followed by the exact risky changes."`
-- `npm audit 2>&1 | distill "Extract the vulnerabilities. Return valid JSON only."`
-- `rg -n "TODO|FIXME" . 2>&1 | distill "List files containing TODO or FIXME. Return only file paths, one per line."`
-- `ls -la 2>&1 | distill "Which files are shown? Return only the filenames."`
-
-You may skip `distill` only in these cases:
-- Exact uncompressed output is required.
-- Using `distill` would break an interactive or TUI workflow.
-
-CRITICAL: Wait for `distill` to finish before continuing.
-```
-
-## Usage
-
-```bash
-logs | distill "summarize errors"
-git diff | distill "what changed?"
-terraform plan 2>&1 | distill "is this safe?"
-```
-
-Translate compressed `distill-talk` back to human language:
-
-```bash
-distill translate "X r=tests_passed ship"
-distill translate "N r=missing_context ctx repo_state" pt-BR
-```
-
-The language argument is optional and defaults to `en-US`.
-
-Point at any OpenAI-compatible endpoint:
-
-```bash
-# LM Studio
-distill --host http://127.0.0.1:1234/v1 --model your-loaded-model "what failed?"
-
-# Ollama (via its OpenAI-compatible /v1 endpoint)
-distill --host http://127.0.0.1:11434/v1 --model llama3.2 "what failed?"
-
-# OpenAI
-distill --host https://api.openai.com/v1 --model gpt-4o-mini --api-key sk-... "summarize"
-
-# Docker Model Runner
-distill --host http://127.0.0.1:12434/engines/v1 --model ai/llama3.2 "what failed?"
-```
-
-## Configurations
-
-You can persist defaults locally:
-
-```bash
-distill config host http://127.0.0.1:1234/v1
-distill config model "qwen3.5:2b"
-distill config api-key "secret-key-123"
-distill config timeout-ms 90000
-```
-
-Environment variables override persisted config, and CLI flags override both:
-
-- `DISTILL_HOST`
-- `DISTILL_MODEL`
-- `DISTILL_API_KEY`
-- `DISTILL_TIMEOUT_MS`
-
-For pipeline exit mirroring, use `pipefail` in your shell:
-
-```bash
-set -o pipefail
-```
-
-Interactive prompts are passed through when `distill` detects simple prompt patterns like `[y/N]` or `password:`.
-
-## Global agent instructions
-
-If you want Codex, Claude Code, or OpenCode to prefer `distill` whenever they run a command whose output will be sent to a paid LLM, add a global instruction telling the agent to pipe command output through `distill`.
-
-- Codex reads global agent instructions from `~/.codex/AGENTS.md`.
-- Claude Code supports global settings in `~/.claude/settings.json`, and its official mechanism for custom behavior is global instructions via `CLAUDE.md`.
-- OpenCode supports global instruction files through `~/.config/opencode/opencode.json`. Point its `instructions` field at a markdown file with the same rule.
-- GitHub Copilot CLI supports local global instructions from `~/.copilot/copilot-instructions.md`.
-- GitHub Copilot CLI also reads repository instructions from .github/copilot-instructions.md, and it can read AGENTS.md files from directories listed in COPILOT_CUSTOM_INSTRUCTIONS_DIRS.
-
-## distill-talk skill
-
-`distill` ships `distill-talk` for both Codex and Claude:
-
-- Codex skill: `skills/distill-talk/SKILL.md`
-- Claude Code project skill: `.claude/skills/distill-talk/SKILL.md`
-
-Both files use the `SKILL.md` frontmatter format with `name` and `description`, and both contain the same compact task DSL as `sam-compress-talk`, renamed for this package.
-
-Install from this repository:
-
-```bash
-mkdir -p ~/.codex/skills ~/.claude/skills
-cp -R skills/distill-talk ~/.codex/skills/distill-talk
-cp -R .claude/skills/distill-talk ~/.claude/skills/distill-talk
-```
-
-Install from the npm package:
+Install:
 
 ```bash
 npm i -g @samuelfaj/distill
-DISTILL_PACKAGE="$(npm root -g)/@samuelfaj/distill"
-mkdir -p ~/.codex/skills ~/.claude/skills
-cp -R "$DISTILL_PACKAGE/skills/distill-talk" ~/.codex/skills/distill-talk
-cp -R "$DISTILL_PACKAGE/.claude/skills/distill-talk" ~/.claude/skills/distill-talk
 ```
 
-Use it when you want one-line compressed task state:
-
-```text
-X r=tests_passed parser e2e docs
-N r=missing_context repro files
-```
-
-Use `distill translate` to expand that DSL for a human reviewer:
+Run onboarding:
 
 ```bash
-distill translate "X r=tests_passed parser e2e docs"
-distill translate "N r=missing_context repro files" pt-BR
+distill
 ```
 
-## Example:
+Onboarding asks for:
 
-```sh 
+- `host`
+- `model`
+- optional `api-key`
+- optional `timeout-ms`
+- whether to install `/distill` for Codex and Claude (default: yes)
+
+After onboarding, pipe command output into `distill`:
+
+```bash
+bun test 2>&1 | distill "Did tests pass? Return PASS or FAIL, followed by failing test names if any."
+git diff | distill "What changed? Return only files changed and one-line summary for each."
+terraform plan 2>&1 | distill "Is this safe? Return SAFE, REVIEW, or UNSAFE, followed by risky changes."
+```
+
+`distill` uses any OpenAI-compatible endpoint. Onboarding stores your local defaults, and CLI flags can override them:
+
+```bash
+distill --host http://127.0.0.1:1234/v1 --model your-model "what failed?"
+```
+
+You can also expand compressed `/distill` output back to normal language:
+
+```bash
+distill translate "Best: Fix auth bug. Add failing test first. No frontend change. Pass: tests pass."
+distill translate "Dict: be=backend
+T: corrigir auth
+Do: repro, teste falhando, patch be
+Pass: testes passam" pt-BR
+```
+
+## How it works
+
+`distill` reads stdin, sends the command output plus your explicit question to your configured model, and prints only the useful result.
+
+It keeps the original command behavior simple: interactive prompts pass through, and normal shell `pipefail` still works when you enable it.
+
+## Example
+
+```sh
 rg -n "terminal|PERMISSION|permission|Permissions|Plan|full access|default" desktop --glob '!**/node_modules/**' | distill "find where terminal and permission UI are implemented in chat screen"
 ```
 
 - **Before:** [7648 tokens 30592 characters 10218 words](./examples/1/BEFORE.md)
 - **After:** [99 tokens 396 characters 57 words](./examples/1/AFTER.md)
 
-**🔥 Saved ~98.7% tokens**
+Saved ~98.7% tokens.

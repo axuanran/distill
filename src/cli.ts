@@ -5,6 +5,7 @@ import {
   parseCommand
 } from "./config";
 import { summarizeBatch, summarizeTranslate, summarizeWatch } from "./llm";
+import { runOnboarding } from "./onboarding";
 import { DistillSession, type ProgressPhase } from "./stream-distiller";
 import { resolveDatasetPath } from "./dataset";
 import {
@@ -17,6 +18,11 @@ import {
 async function run(): Promise<number> {
   const persisted = await readPersistedConfig(process.env);
   const command = parseCommand(process.argv.slice(2), process.env, persisted);
+
+  if (command.kind === "onboard") {
+    await runOnboarding({ env: process.env, persisted });
+    return 0;
+  }
 
   if (command.kind === "help") {
     process.stdout.write(`${formatUsage()}\n`);

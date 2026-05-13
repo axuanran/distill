@@ -34,6 +34,7 @@ export type ConfigKey =
   | "dataset-path";
 
 export type Command =
+  | { kind: "onboard" }
   | { kind: "help" }
   | { kind: "version" }
   | { kind: "configShow" }
@@ -208,6 +209,10 @@ export function parseCommand(
   env: NodeJS.ProcessEnv,
   persisted: PersistedConfig = {}
 ): Command {
+  if (argv.length === 0) {
+    return { kind: "onboard" };
+  }
+
   if (argv[0] === "config") {
     return parseConfigCommand(argv);
   }
@@ -224,7 +229,7 @@ export function parseCommand(
 
   if (argv[0] === "translate") {
     if (!argv[1]?.trim()) {
-      throw new UsageError("distill-talk text is required.");
+      throw new UsageError("/distill text is required.");
     }
 
     if (argv.length > 3) {
@@ -236,7 +241,7 @@ export function parseCommand(
       text: argv[1],
       language: argv[2] ?? "en-US",
       config: {
-        question: "Translate distill-talk into human language.",
+        question: "Translate /distill output into human language.",
         model: defaults.model,
         host: defaults.host,
         apiKey: defaults.apiKey,
@@ -324,7 +329,7 @@ export function formatUsage(): string {
   return [
     "Usage:",
     '  cmd 2>&1 | distill "question"',
-    '  distill translate "X r=tests_passed ship" [language]',
+    '  distill translate "Best: Fix auth bug. Pass: tests pass." [language]',
     '  distill config host http://127.0.0.1:11434/v1',
     '  distill config model "qwen3.5:2b"',
     '  distill --host http://127.0.0.1:1234/v1 --model my-model "summarize"',

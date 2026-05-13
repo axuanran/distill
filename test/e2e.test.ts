@@ -289,7 +289,7 @@ describe("distill end-to-end", () => {
     }
   });
 
-  it("translates distill-talk without requiring stdin", async () => {
+  it("translates /distill output without requiring stdin", async () => {
     const fake = await createFakeChatProvider((_body, _index) =>
       new Response(
         JSON.stringify({
@@ -306,7 +306,18 @@ describe("distill end-to-end", () => {
     );
 
     try {
-      const result = await runLauncher(["translate", "X r=tests_passed ship"], {
+      const compressed = [
+        "Best:",
+        "Fix auth bug.",
+        "Add failing test first.",
+        "No frontend change.",
+        "Pass: valid user allowed, tests pass.",
+        "More aggressive:",
+        "Fix backend auth only.",
+        "Tradeoff:",
+        "Less context for reviewer."
+      ].join("\n");
+      const result = await runLauncher(["translate", compressed], {
         env: createProviderEnv(fake.host)
       });
 
@@ -317,15 +328,16 @@ describe("distill end-to-end", () => {
       expect(fake.requests[0]).toMatchObject({
         model: DEFAULT_MODEL
       });
-      expect(JSON.stringify(fake.requests[0])).toContain("distill-talk");
+      expect(JSON.stringify(fake.requests[0])).toContain("/distill");
       expect(JSON.stringify(fake.requests[0])).toContain("en-US");
-      expect(JSON.stringify(fake.requests[0])).toContain("X r=tests_passed ship");
+      expect(JSON.stringify(fake.requests[0])).toContain("Military English");
+      expect(JSON.stringify(fake.requests[0])).toContain("Pass: valid user allowed");
     } finally {
       fake.stop();
     }
   });
 
-  it("translates distill-talk into an explicit language", async () => {
+  it("translates /distill output into an explicit language", async () => {
     const fake = await createFakeChatProvider((_body, _index) =>
       new Response(
         JSON.stringify({
@@ -336,8 +348,15 @@ describe("distill end-to-end", () => {
     );
 
     try {
+      const compressed = [
+        "Dict: be=backend fe=frontend",
+        "T: corrigir bug de permissao",
+        "Do: repro, teste falhando, patch be",
+        "No: mudar fe",
+        "Pass: usuario valido permitido"
+      ].join("\n");
       const result = await runLauncher(
-        ["translate", "N r=missing_context ctx", "pt-BR"],
+        ["translate", compressed, "pt-BR"],
         {
           env: createProviderEnv(fake.host)
         }
@@ -346,7 +365,8 @@ describe("distill end-to-end", () => {
       expect(result.code).toBe(0);
       expect(result.stdout).toBe("Preciso do contexto que falta.\n");
       expect(JSON.stringify(fake.requests[0])).toContain("pt-BR");
-      expect(JSON.stringify(fake.requests[0])).toContain("N r=missing_context ctx");
+      expect(JSON.stringify(fake.requests[0])).toContain("Dict: be=backend fe=frontend");
+      expect(JSON.stringify(fake.requests[0])).toContain("No: mudar fe");
     } finally {
       fake.stop();
     }

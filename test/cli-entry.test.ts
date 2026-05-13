@@ -114,6 +114,62 @@ describe("cli entrypoint", () => {
     }
   });
 
+  it("runs onboarding with config and skill install defaults", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "distill-onboarding-"));
+    const home = path.join(dir, "home");
+    const configPath = path.join(dir, "config.json");
+
+    try {
+      const result = spawnSync("bun", ["run", cli], {
+        cwd: root,
+        encoding: "utf8",
+        input: [
+          "http://127.0.0.1:1234/v1",
+          "local-model",
+          "",
+          "120000",
+          ""
+        ].join("\n"),
+        env: {
+          ...process.env,
+          HOME: home,
+          USERPROFILE: home,
+          DISTILL_CONFIG_PATH: configPath,
+          DISTILL_PACKAGE_ROOT: root
+        }
+      });
+
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain("distill onboarding");
+      expect(result.stdout).toContain("/distill skill installed for Codex and Claude");
+      expect(JSON.parse(await readFile(configPath, "utf8"))).toEqual({
+        host: "http://127.0.0.1:1234/v1",
+        model: "local-model",
+        timeoutMs: 120000
+      });
+      expect(
+        await readFile(
+          path.join(home, ".codex", "skills", "distill", "SKILL.md"),
+          "utf8"
+        )
+      ).toContain("name: distill");
+      expect(
+        await readFile(
+          path.join(home, ".claude", "skills", "distill", "SKILL.md"),
+          "utf8"
+        )
+      ).toContain("name: distill");
+      expect(await readFile(path.join(home, ".codex", "AGENTS.md"), "utf8")).toContain(
+        "Use `/distill` whenever"
+      );
+      expect(await readFile(path.join(home, ".claude", "CLAUDE.md"), "utf8")).toContain(
+        "Use `/distill` whenever"
+      );
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   itUnixOnly("falls back to the workspace binary when the platform package is not installed", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "distill-workspace-fallback-"));
     const fakeTargetDir = path.join(

@@ -10,6 +10,10 @@ import {
 } from "../src/config";
 
 describe("parseCommand", () => {
+  it("parses no arguments as onboarding", () => {
+    expect(parseCommand([], {}, {})).toEqual({ kind: "onboard" });
+  });
+
   it("parses defaults and joins the question", () => {
     const command = parseCommand(["what", "changed?"], {}, {});
 
@@ -58,12 +62,12 @@ describe("parseCommand", () => {
   });
 
   it("parses translate command with the default human language", () => {
-    expect(parseCommand(["translate", "X r=done tests"], {}, {})).toEqual({
+    expect(parseCommand(["translate", "Best:\nFix auth bug.\nPass: tests pass"], {}, {})).toEqual({
       kind: "translate",
-      text: "X r=done tests",
+      text: "Best:\nFix auth bug.\nPass: tests pass",
       language: "en-US",
       config: {
-        question: "Translate distill-talk into human language.",
+        question: "Translate /distill output into human language.",
         model: DEFAULT_MODEL,
         host: DEFAULT_HOST,
         apiKey: "",
@@ -75,12 +79,12 @@ describe("parseCommand", () => {
   });
 
   it("parses translate command with an explicit human language", () => {
-    expect(parseCommand(["translate", "N r=missing ctx", "pt-BR"], {}, {})).toEqual({
+    expect(parseCommand(["translate", "Dict: be=backend\nDo: patch be", "pt-BR"], {}, {})).toEqual({
       kind: "translate",
-      text: "N r=missing ctx",
+      text: "Dict: be=backend\nDo: patch be",
       language: "pt-BR",
       config: {
-        question: "Translate distill-talk into human language.",
+        question: "Translate /distill output into human language.",
         model: DEFAULT_MODEL,
         host: DEFAULT_HOST,
         apiKey: "",
@@ -200,17 +204,13 @@ describe("parseCommand", () => {
     ).toBe("http://example.test/v1");
   });
 
-  it("throws on missing question", () => {
-    expect(() => parseCommand([], {}, {})).toThrow(UsageError);
-  });
-
   it("throws on missing translate text", () => {
     expect(() => parseCommand(["translate"], {}, {})).toThrow(UsageError);
   });
 
   it("throws on extra translate arguments", () => {
     expect(() =>
-      parseCommand(["translate", "X r=done", "pt-BR", "extra"], {}, {})
+      parseCommand(["translate", "Best:\nDone.", "pt-BR", "extra"], {}, {})
     ).toThrow(UsageError);
   });
 
