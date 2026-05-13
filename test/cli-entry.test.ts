@@ -238,7 +238,11 @@ describe("cli entrypoint", () => {
           "Do not return a rewritten/compressed copy of the user's prompt"
         );
         expect(instructions).toContain("Keep hidden chain-of-thought private");
-        expect(instructions).toContain("one-letter aliases A/B/F/D/E/C/O/V/X/P/U");
+        expect(instructions).toContain("fixed prefixes S/C/D/R/O/N/P");
+        expect(instructions).toContain("task aliases A/B/F/E/V/X/U/DB/CFG/DOC/PERM");
+        expect(instructions).toContain(
+          "Dict: S=state C=context D=action R=risk O=outcome N=no-go P=proof"
+        );
         expect(instructions).toContain("shortest unambiguous key possible");
         expect(instructions).toContain(
           "For every non-interactive, non-TUI shell/tool command, pipe output through `distill`"

@@ -393,7 +393,7 @@ describe("dsl memory", () => {
           expect(request.candidates.some((entry) => entry.meaning === "release flow")).toBe(true);
           return [
             {
-              key: "R",
+              key: "RF",
               meaning: "release flow",
               kind: "macro",
               scope: "project",
@@ -405,7 +405,7 @@ describe("dsl memory", () => {
       });
 
       expect(output).toContain("would learn-thread 1 entries in project");
-      expect(output).toContain("R\tmacro\tproject\t0.90\trelease flow");
+      expect(output).toContain("R1\tmacro\tproject\t0.90\trelease flow");
       expect(
         await runDslCommand(["show", "--scope", "project"], {
           env,
@@ -421,7 +421,7 @@ describe("dsl memory", () => {
       const transcript = "review release flow\nrelease flow needs check\n";
       const reviewer = async (): Promise<DslThreadLearnReview[]> => [
         {
-          key: "R",
+          key: "RF",
           meaning: "release flow",
           kind: "macro",
           scope: "project",
@@ -444,9 +444,9 @@ describe("dsl memory", () => {
         now: daysFromNow(1)
       });
 
-      expect(first).toContain("candidate R added to project");
-      expect(second).toContain("active R updated in project");
-      expect(output).toContain("R\tmacro\tactive\trelease flow");
+      expect(first).toContain("candidate R1 added to project");
+      expect(second).toContain("active R1 updated in project");
+      expect(output).toContain("R1\tmacro\tactive\trelease flow");
     });
   });
 

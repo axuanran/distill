@@ -26,12 +26,22 @@ After onboarding you can use `/distill` in Claude/Codex to make the agent keep t
 
 It should not return your prompt rewritten. It should adopt the language structure and keep using it.
 
-`/distill` uses English Military English plus shared DSL memory with tiny keys:
+`/distill` uses English Military English + AR-0/AR-1 plus shared DSL memory with tiny keys:
 
-- aliases: `A` auth, `B` backend, `F` frontend, `D` database, `E` E2E, `C` config, `O` docs, `V` env, `X` deps, `P` permissions, `U` UI
+- fixed prefixes: `S` state, `C` cause/context, `D` action/decision, `R` risk, `O` outcome, `N` no-go, `P` proof/pass
+- aliases: `A` auth, `B` backend, `F` frontend, `E` E2E, `V` env, `X` deps, `U` UI, `DB` database, `CFG` config, `DOC` docs, `PERM` permissions
 - macros: `1` test first, `2` run tests, `3` report summary/files/tests/status, `4` review, `5` fix, `6` validate, `7` commit/push, `8` PR, `9` release, `0` raw output
 - defaults: `N1` no frontend, `N2` no backend, `N3` no UI, `N4` no broad refactor, `N5` preserve user changes, `N6` TUI/interactive
 - learned terms start as candidates, promote after repeated use, and expire when unused
+
+Response shape favors semantic atoms:
+
+```text
+Dict: S=state C=context D=action R=risk O=outcome N=no-go P=proof
+S glab auth fail gitlab.com
+D inspect remotes + MR meta
+R merge/update may block w/o token
+```
 
 Manage DSL memory:
 

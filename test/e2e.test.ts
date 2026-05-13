@@ -362,7 +362,7 @@ describe("distill end-to-end", () => {
               message: {
                 content: JSON.stringify([
                   {
-                    key: "R",
+                    key: "RF",
                     meaning: "release flow",
                     kind: "macro",
                     scope: "project",
@@ -401,8 +401,8 @@ describe("distill end-to-end", () => {
       });
 
       expect(result.code).toBe(0);
-      expect(result.stdout).toContain("candidate R added to project");
-      expect(shown.stdout).toContain("R\tmacro\tcandidate\trelease flow");
+      expect(result.stdout).toContain("candidate R1 added to project");
+      expect(shown.stdout).toContain("R1\tmacro\tcandidate\trelease flow");
       expect(shown.stdout).not.toContain("secret token value");
       expect(fake.requests).toHaveLength(1);
     } finally {

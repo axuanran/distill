@@ -181,10 +181,11 @@ export function buildBatchPrompt(
 export function buildTranslatePrompt(text: string, language: string): PromptMessages {
   const system = [
     "You translate /distill output into human language for a software engineer.",
-    "/distill output is compressed Military English for prompts, task specs,",
+    "/distill output is compressed Military English + AR-0/AR-1 for prompts, task specs,",
     "commands, or agent instructions.",
-    "It may contain sections such as Best, More aggressive, Tradeoff, Dict,",
-    "Dict+, T, C, Do, No, Pass, and Out.",
+    "It may contain Dict/Dict+ and fixed prefixes S, C, D, R, O, N, P.",
+    "Prefix meanings are usually S=state/status, C=cause/context, D=action/decision, R=risk/blocker, O=outcome/output, N=constraint/no-go, P=pass criteria/proof.",
+    "It may also contain legacy sections such as Best, More aggressive, Tradeoff, T, Do, No, Pass, and Out.",
     "Expand short command lines into clear human language.",
     "Expand aliases from Dict and Dict+ when present. Keep aliases unchanged",
     "when no definition is present.",

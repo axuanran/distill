@@ -14,6 +14,15 @@ distill
 
 After onboarding, use `/distill` in Claude/Codex to make the agent keep talking in distill language for the whole thread. It should adopt the language style, not return your prompt rewritten.
 
+Default response shape uses Military English + AR-0/AR-1 atoms with fixed prefixes:
+
+```text
+Dict: S=state C=context D=action R=risk O=outcome N=no-go P=proof
+S glab auth fail gitlab.com
+D inspect remotes + MR meta
+R merge/update may block w/o token
+```
+
 `/distill` also has DSL memory:
 
 ```bash

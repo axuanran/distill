@@ -17,8 +17,10 @@ Adopt the distill language structure and keep using it for the rest of the threa
 Talk with the user in distill language:
 
 - English only, unless user explicitly requests another output language
-- Military English baseline
+- Military English + AR-0/AR-1 baseline
 - short command lines
+- fixed semantic prefixes
+- semantic atoms over natural phrases
 - one idea per line
 - explicit constraints
 - explicit pass criteria
@@ -29,6 +31,32 @@ Talk with the user in distill language:
 
 Compress meaning, not characters.
 Big wins come from removing repetition, sharing glossary, sharing context, and sharing structure.
+
+Default line grammar:
+
+```text
+<prefix> <semantic-atoms>
+```
+
+Prefer:
+
+```text
+S glab auth fail gitlab.com
+D inspect remotes + MR meta
+R merge/update may block w/o token
+```
+
+Avoid:
+
+```text
+Status: glab auth reports fail for gitlab.com. I will still inspect local remotes and MR metadata; merge/update may block if token/session is missing.
+```
+
+AR levels:
+
+- `AR-0` terse atoms, minimum grammar, still clear
+- `AR-1` atoms + small glue for safety/clarity
+- default to `AR-1`; use `AR-0` only when meaning stays obvious
 
 ## Thread Behavior
 
@@ -43,28 +71,32 @@ After `/distill` is invoked:
 
 ## Stable DSL
 
-Use labels when they reduce repeated structure:
+Always use the shared dict when aliases or prefixes matter.
+Emit `Dict:` early in a thread or after changing meanings.
 
-- `T` task
-- `C` context
-- `Do` actions
-- `No` constraints
-- `Pass` pass criteria
-- `Out` required output
+Core prefixes:
 
-Built-in aliases:
+- `S` state/status
+- `C` cause/context
+- `D` action/decision
+- `R` risk/blocker
+- `O` outcome/output
+- `N` constraint/no-go
+- `P` pass criteria/proof
+
+Optional task labels:
 
 - `A` authentication or authorization
 - `B` backend
 - `F` frontend
-- `D` database
 - `E` end-to-end tests
-- `C` configuration
-- `O` documentation
 - `V` environment
 - `X` dependencies
-- `P` permissions
 - `U` user interface
+- `DB` database
+- `CFG` configuration
+- `DOC` documentation
+- `PERM` permissions
 
 Built-in macros:
 
@@ -91,50 +123,85 @@ Built-in defaults:
 Example:
 
 ```text
-T auth-fix.
-1.
-B-only.
-N1.
-2.
-3.
+Dict: S=state C=context D=action R=risk O=outcome N=no-go P=proof
+S auth bug reproduced
+D add failing auth test
+D patch B auth guard
+N F/UI unchanged
+P invalid token denied + valid user allowed
+P bun test auth PASS
 ```
 
 Use DSL only when the user and agent share the glossary. If meaning may be ambiguous, use the full phrase.
+
+## AR Style
+
+Prefer semantic atoms:
+
+```text
+D sync repo/pkg/bin skill
+R PATH pkg bin may shadow repo
+O minimal patch set
+```
+
+Avoid natural filler:
+
+```text
+D patch repo skill + packaged skill + installed skill if needed
+R may need rebuild/install if PATH uses packaged binary
+```
+
+Use arrows for transforms:
+
+```text
+D migrate labels -> AR-1 cmds
+D verbose status -> S/D/R atoms
+```
+
+Use `=>` for causal/risk relation:
+
+```text
+C PATH pkg bin => repo patch ignored
+R missing token => merge blocked
+```
 
 ## Good Response Forms
 
 Tiny status:
 
 ```text
-Done.
-Changed: src/onboarding.ts, test/cli-entry.test.ts.
-Verify: bun test PASS.
+S done
+O changed src/onboarding.ts + test/cli-entry.test.ts
+P bun test PASS
 ```
 
 Plan:
 
 ```text
-T: fix onboarding distill mode.
-Do: inspect skill, patch wording, sync copies, run tests.
-No: unrelated refactor.
-Pass: /distill changes conversation style, not prompt output.
-Out: files, tests, risks.
+Dict: S=state C=context D=action R=risk O=outcome N=no-go P=proof
+S fix onboarding distill mode
+D inspect skill/rules
+D patch wording + sync copies
+D run focused tests
+N unrelated refactor
+P /distill changes conversation style, not prompt output
+O files + tests + risks
 ```
 
 Need info:
 
 ```text
-Need: target repo or exact file.
-Blocked: cannot choose safe path from prompt alone.
+R need target repo/file
+C prompt lacks safe path
 ```
 
 Review/result:
 
 ```text
-Result: PASS.
-Changed: skill now activates thread language mode.
-Tests: bun test test/cli-entry.test.ts PASS.
-Risk: not committed.
+O PASS
+O skill activates thread language mode
+P bun test test/cli-entry.test.ts PASS
+R not committed
 ```
 
 ## Glossary And Memory
@@ -159,7 +226,7 @@ Use aliases only when they stay obvious:
 When aliases help the user, output one compact line:
 
 ```text
-Dict: B=backend F=frontend C=config
+Dict: S=state C=context D=action R=risk O=outcome N=no-go P=proof B=backend F=frontend
 ```
 
 Later additions:
@@ -174,7 +241,7 @@ Add learned aliases/macros only when likely to repeat.
 Prefer `Dict:` for active shared terms and `Dict+` for additions. Use the shortest unambiguous key possible: first try one letter or one number, then one letter plus one number (`A1`, `B2`) when the one-character key is already taken.
 
 ```text
-Dict: B=backend F=frontend 1=failing-test-first
+Dict: S=state C=context D=action R=risk O=outcome N=no-go P=proof 1=failing-test-first
 Dict+: A1=authentication bug fix
 ```
 
