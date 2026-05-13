@@ -174,6 +174,42 @@ describe("summarizeBatch", () => {
     expect(body.messages[1].content).toContain(baseConfig.question);
   });
 
+  it("always tells the model to create efficient inline variables", async () => {
+    let requestBody: unknown;
+
+    const output = await summarizeBatch(
+      baseConfig,
+      "cache warmed\ncache reused\nmodel loaded\nmodel reused",
+      async (_, init) => {
+        requestBody = JSON.parse(String(init?.body ?? "{}"));
+
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "S cache=#c1 model=#m1\nO #c1 + #m1 reused" } }]
+          }),
+          { status: 200 }
+        );
+      }
+    );
+
+    const body = requestBody as {
+      messages: Array<{ role: string; content: string }>;
+    };
+
+    expect(output).toContain("#c1");
+    expect(body.messages[0].content).toContain("Inline variable rule");
+    expect(body.messages[0].content).toContain("appears 2+ times");
+    expect(body.messages[0].content).toContain("<term>=#<letter><digit>");
+    expect(body.messages[0].content).toContain("project nouns");
+    expect(body.messages[0].content).toContain("Dict delta rule");
+    expect(body.messages[0].content).toContain("only with newly introduced variables");
+    expect(body.messages[0].content).toContain("omit Dict instead of restating old definitions");
+    expect(body.messages[0].content).toContain("Substitution pass");
+    expect(body.messages[0].content).toContain("replace every later safe occurrence");
+    expect(body.messages[0].content).not.toContain("Known /distill DSL memory");
+    expect(body.messages[0].content).not.toContain("workspace=#w3");
+  });
+
   it("injects compact DSL memory into the batch system prompt", async () => {
     let requestBody: unknown;
 
@@ -202,8 +238,13 @@ describe("summarizeBatch", () => {
     expect(body.messages[0].content).toContain(
       "AUTH = authentication fix (alias, project)"
     );
+    expect(body.messages[0].content).toContain("Inline variable rule");
     expect(body.messages[0].content).toContain("<term>=#<letter><digit>");
-    expect(body.messages[0].content).toContain("there is no fixed variable list");
+    expect(body.messages[0].content).toContain("Dict delta rule");
+    expect(body.messages[0].content).toContain("do not repeat variables already defined");
+    expect(body.messages[0].content).toContain("Substitution pass");
+    expect(body.messages[0].content).toContain("exact model ID");
+    expect(body.messages[0].content).toContain("There is no fixed variable list");
     expect(body.messages[0].content).not.toContain("workspace=#w3");
     expect(body.messages[0].content).toContain("Emit Dict+ only");
   });

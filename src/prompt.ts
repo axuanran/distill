@@ -162,22 +162,33 @@ export function buildBatchPrompt(
   input: string,
   options: BatchPromptOptions = {}
 ): PromptMessages {
+  const inlineVariableRules = [
+    "Inline variable rule:",
+    "When free-form /distill output is allowed and the same stable noun/phrase appears 2+ times, or will likely repeat across status lines, define it once as <term>=#<letter><digit> and then reuse the # key.",
+    "Prefer inline variables for repeated project nouns, package nouns, component names, workflow names, and repeated technical objects.",
+    "Dict delta rule: each new response may update Dict only with newly introduced variables; do not repeat variables already defined earlier in the thread or known DSL memory.",
+    "If no new variable is introduced in the response, omit Dict instead of restating old definitions.",
+    "Substitution pass: after defining any Dict alias or inline variable, replace every later safe occurrence of that meaning with the alias/key.",
+    "Do not leave repeated full terms after defining their alias/key unless the full term is required as an exact model ID, package name, path, URL, quoted text, or disambiguation.",
+    "Do not define variables for secrets, people, IDs, paths, URLs, or one-off terms.",
+    "Inline variables are thread-local unless a later learn-thread pass promotes them; do not assume every inline variable is persisted.",
+    "There is no fixed variable list; choose variables from this output/task only."
+  ].join("\n");
   const dslRules = options.dslMemory
     ? [
         "Known /distill DSL memory:",
         options.dslMemory,
         "Use these learned aliases/macros/defaults when the requested output format allows DSL.",
         "When free-form /distill output is allowed, start with Dict only if needed, then use the active DSL keys.",
-        "For repeated stable nouns not already in DSL, choose dynamic inline variables with the pattern <term>=#<letter><digit>, then reuse the # key.",
-        "Choose variables from terms that repeat or are likely to repeat in the current output; there is no fixed variable list.",
-        "Inline variables are thread-local unless a later learn-thread pass promotes them; do not assume every inline variable is persisted.",
         "Do not redefine known entries. Emit Dict+ only for genuinely reusable new terms.",
         "When emitting Dict+, use the shortest unambiguous key: one letter or one number first, then one letter plus one number if needed."
       ].join("\n")
     : "";
 
   return {
-    system: [COMMON_RULES, dslRules, FEW_SHOT].filter(Boolean).join("\n\n"),
+    system: [COMMON_RULES, inlineVariableRules, dslRules, FEW_SHOT]
+      .filter(Boolean)
+      .join("\n\n"),
     user: `Command output:\n${fitInput(input)}\n\nQuestion: ${question}`
   };
 }
