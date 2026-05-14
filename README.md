@@ -22,6 +22,52 @@ Run onboarding:
 distill
 ```
 
+By default onboarding now selects the Distill local model:
+
+- Apple Silicon macOS: `samuelfaj/distill-1.7B-4bit-MLX` through `mlx_lm.server`
+- Linux, Windows, and Intel macOS: `samuelfaj/distill-1.7B-4bit-GGUF` through `llama-server`
+
+You can still choose an external OpenAI-compatible API during onboarding.
+
+When local mode is selected, Distill installs the missing local runtime when it can,
+starts a local OpenAI-compatible server automatically, downloads/loads the model,
+and shows progress:
+
+```text
+(1%) Downloading and loading Distill local model...
+```
+
+The local server is reused when already healthy. The model is cached by the runtime,
+so a completed download is not downloaded again.
+
+Local defaults:
+
+```text
+provider=local
+local-backend=auto
+local-concurrency=5
+local-host=127.0.0.1
+local-port=8009
+```
+
+Useful overrides:
+
+```bash
+DISTILL_PROVIDER=external
+DISTILL_LOCAL_BACKEND=mlx
+DISTILL_LOCAL_CONCURRENCY=5
+DISTILL_LOCAL_HOST=127.0.0.1
+DISTILL_LOCAL_PORT=8009
+```
+
+Runtime/cache notes:
+
+- MLX runtime: uses existing `mlx_lm.server`, otherwise installs `mlx-lm` with `uv tool install mlx-lm` or Python user install.
+- MLX model cache: Hugging Face cache, usually `~/.cache/huggingface/hub/models--samuelfaj--distill-1.7B-4bit-MLX`.
+- llama.cpp runtime: uses existing `llama-server`, otherwise downloads an official llama.cpp release into Distill's config runtime directory.
+- llama.cpp runtime directory: usually `~/.config/distill/runtimes/llama.cpp/<release>/`.
+- Logs and PID: usually `~/.config/distill/logs/local-server.log` and `~/.config/distill/logs/local-server.pid`.
+
 After onboarding you can use `/distill` in Claude/Codex to make the agent keep talking in distill language for the whole thread.
 
 It should not return your prompt rewritten. It should adopt the language structure and keep using it.
@@ -77,7 +123,7 @@ git diff | distill "What changed? Return only files changed and one-line summary
 terraform plan 2>&1 | distill "Is this safe? Return SAFE, REVIEW, or UNSAFE, followed by risky changes."
 ```
 
-**Recommended LLM: qwen3.5-4b**
+**Recommended LLM: Distill local model**
 
 ## Example
 

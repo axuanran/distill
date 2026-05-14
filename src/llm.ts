@@ -1,4 +1,5 @@
 import type { RuntimeConfig } from "./config";
+import { ensureLocalServer } from "./local-server";
 import {
   buildBatchPrompt,
   buildDslPromotionPrompt,
@@ -19,6 +20,18 @@ export interface ChatCompletionRequest {
   fetchImpl?: typeof fetch;
 }
 
+interface SummarizeOptions {
+  dslMemory?: string;
+  ensureLocalServer?: (config: RuntimeConfig) => Promise<void>;
+}
+
+interface LocalRequestGate {
+  active: number;
+  queue: Array<() => void>;
+}
+
+const localRequestGates = new Map<string, LocalRequestGate>();
+
 function buildChatCompletionsUrl(baseUrl: string): URL {
   const normalized = new URL(baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`);
   const pathname = normalized.pathname.replace(/\/+$/, "");
@@ -31,6 +44,59 @@ function buildChatCompletionsUrl(baseUrl: string): URL {
   normalized.hash = "";
 
   return normalized;
+}
+
+async function withLocalRequestGate<T>(
+  config: RuntimeConfig,
+  callback: () => Promise<T>
+): Promise<T> {
+  const key = `${config.localHost}:${config.localPort}`;
+  let gate = localRequestGates.get(key);
+
+  if (!gate) {
+    gate = { active: 0, queue: [] };
+    localRequestGates.set(key, gate);
+  }
+
+  await acquireLocalRequestSlot(gate, config.localConcurrency);
+
+  try {
+    return await callback();
+  } finally {
+    releaseLocalRequestSlot(key, gate);
+  }
+}
+
+function acquireLocalRequestSlot(
+  gate: LocalRequestGate,
+  limit: number
+): Promise<void> {
+  if (gate.active < limit) {
+    gate.active += 1;
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve) => {
+    gate.queue.push(() => {
+      gate.active += 1;
+      resolve();
+    });
+  });
+}
+
+function releaseLocalRequestSlot(key: string, gate: LocalRequestGate): void {
+  gate.active -= 1;
+
+  const next = gate.queue.shift();
+
+  if (next) {
+    next();
+    return;
+  }
+
+  if (gate.active === 0) {
+    localRequestGates.delete(key);
+  }
 }
 
 export async function chatCompletion({
@@ -107,27 +173,37 @@ export async function chatCompletion({
   }
 }
 
-function summarize(
+async function summarize(
   config: RuntimeConfig,
   prompt: PromptMessages,
-  fetchImpl?: typeof fetch
+  fetchImpl?: typeof fetch,
+  ensureLocalServerImpl: (config: RuntimeConfig) => Promise<void> = ensureLocalServer
 ): Promise<string> {
-  return chatCompletion({
-    baseUrl: config.host,
-    apiKey: config.apiKey,
-    model: config.model,
-    prompt,
-    timeoutMs: config.timeoutMs,
-    temperature: 0,
-    maxTokens: 512,
-    fetchImpl
-  });
+  if (config.provider === "local") {
+    await ensureLocalServerImpl(config);
+  }
+
+  const request = () =>
+    chatCompletion({
+      baseUrl: config.host,
+      apiKey: config.apiKey,
+      model: config.model,
+      prompt,
+      timeoutMs: config.timeoutMs,
+      temperature: 0,
+      maxTokens: 512,
+      fetchImpl
+    });
+
+  return config.provider === "local"
+    ? withLocalRequestGate(config, request)
+    : request();
 }
 
 export function summarizeBatch(
   config: RuntimeConfig,
   input: string,
-  optionsOrFetchImpl: { dslMemory?: string } | typeof fetch = {},
+  optionsOrFetchImpl: SummarizeOptions | typeof fetch = {},
   fetchImpl?: typeof fetch
 ): Promise<string> {
   const options =
@@ -138,7 +214,8 @@ export function summarizeBatch(
   return summarize(
     config,
     buildBatchPrompt(config.question, input, options),
-    resolvedFetchImpl
+    resolvedFetchImpl,
+    options.ensureLocalServer
   );
 }
 
