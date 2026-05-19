@@ -60,7 +60,7 @@ describe("parseCommand", () => {
         host: expectedLocalHost,
         apiKey: "",
         timeoutMs: DEFAULT_TIMEOUT_MS,
-        datasetEnabled: true,
+        datasetEnabled: false,
         datasetPath: undefined,
         ...defaultAutoLearnConfig
       }
@@ -96,7 +96,7 @@ describe("parseCommand", () => {
         host: "http://example.test",
         apiKey: "secret",
         timeoutMs: 10,
-        datasetEnabled: true,
+        datasetEnabled: false,
         datasetPath: undefined,
         ...defaultAutoLearnConfig
       }
@@ -119,7 +119,7 @@ describe("parseCommand", () => {
         host: expectedLocalHost,
         apiKey: "",
         timeoutMs: DEFAULT_TIMEOUT_MS,
-        datasetEnabled: true,
+        datasetEnabled: false,
         datasetPath: undefined,
         ...defaultAutoLearnConfig
       }
@@ -142,7 +142,7 @@ describe("parseCommand", () => {
         host: expectedLocalHost,
         apiKey: "",
         timeoutMs: DEFAULT_TIMEOUT_MS,
-        datasetEnabled: true,
+        datasetEnabled: false,
         datasetPath: undefined,
         ...defaultAutoLearnConfig
       }

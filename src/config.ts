@@ -15,7 +15,7 @@ export const DISTILL_LLAMA_MODEL = "distill-local";
 export const DEFAULT_IDLE_MS = 1_200;
 export const DEFAULT_INTERACTIVE_GAP_MS = 180;
 export const DEFAULT_PROGRESS_FRAME_MS = 120;
-export const DEFAULT_DATASET_ENABLED = true;
+export const DEFAULT_DATASET_ENABLED = false;
 export const DEFAULT_AUTO_LEARN = true;
 export const DEFAULT_AUTO_LEARN_SCOPE = "project";
 export const DEFAULT_AUTO_LEARN_SOURCE = "output";
@@ -632,10 +632,10 @@ export function formatUsage(): string {
     `  DISTILL_LOCAL_CONCURRENCY=5      Max concurrent local model requests`,
     `  DISTILL_LOCAL_PORT=${DEFAULT_LOCAL_PORT}       Local model server port`,
     "",
-    "Local fine-tuning capture (enabled by default):",
-    "  Successful batch summaries are appended as JSONL under the config dir",
-    "  (input + completion). The file is created with mode 0600.",
-    "  DISTILL_DATASET_ENABLED=false  Disable local JSONL dataset capture",
+    "Local fine-tuning capture (disabled by default):",
+    "  When enabled, successful batch summaries are appended as JSONL under",
+    "  the config dir (input + completion). The file is created with mode 0600.",
+    "  DISTILL_DATASET_ENABLED=true   Enable local JSONL dataset capture",
     "  DISTILL_DATASET_PATH=<path>    Override dataset JSONL path",
     "  DISTILL_AUTO_LEARN=false       Disable project-scoped DSL auto-learn",
     "  DISTILL_MAX_PROMPT_DSL_ENTRIES=<n>  Limit DSL entries injected into prompts",
